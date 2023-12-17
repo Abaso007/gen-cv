@@ -8,7 +8,7 @@ import pyodbc
 import azure.functions as func
 
 search_endpoint = os.getenv("AZURE_SEARCH_ENDPOINT")
-search_key = os.getenv("AZURE_SEARCH_API_KEY") 
+search_key = os.getenv("AZURE_SEARCH_API_KEY")
 search_api_version = '2023-07-01-Preview'
 search_index_name = os.getenv("AZURE_SEARCH_INDEX")
 
@@ -26,7 +26,9 @@ sql_db_name = os.getenv("SQL_DB_NAME")
 blob_sas_url = os.getenv("BLOB_SAS_URL")
 
 server_connection_string = f"Driver={{ODBC Driver 17 for SQL Server}};Server=tcp:{sql_db_server},1433;Uid={sql_db_user};Pwd={sql_db_password};Encrypt=yes;TrustServerCertificate=no;Connection Timeout=30;"
-database_connection_string = server_connection_string + f"Database={sql_db_name};"
+database_connection_string = (
+    f"{server_connection_string}Database={sql_db_name};"
+)
 
 # font color adjustments
 blue, end_blue = '\033[36m', '\033[0m'
@@ -217,13 +219,9 @@ def get_bonus_points(account_id):
     # Convert loyalty_points to cash_value
     cash_value = loyalty_points / 9.5
 
-    # Create a JSON object with the required keys and values
-    response_json = json.dumps({
-        "available_bonus_points": loyalty_points,
-        "cash_value": cash_value
-    })
-
-    return response_json
+    return json.dumps(
+        {"available_bonus_points": loyalty_points, "cash_value": cash_value}
+    )
 
 
 def get_order_details(account_id):
@@ -236,10 +234,10 @@ def get_order_details(account_id):
         WHERE o.account_id = ?
     '''
     orders = execute_sql_query(query, params=(account_id,))
-    
+
     # Get today's date and calculate the expected delivery date for each order
-    today = datetime.today()
-    
+    today = datetime.now()
+
     # Create a JSON object with the required details
     order_details = [
         {
@@ -248,7 +246,7 @@ def get_order_details(account_id):
         }
         for order in orders
     ]
-    
+
     # Return the JSON object
     return json.dumps(order_details)
 
@@ -263,17 +261,17 @@ def order_product(account_id, product_name, quantity=1):
     query = "SELECT id, name, stock FROM Products WHERE LOWER(name) LIKE LOWER(?)"
     params = (f'%{product_name}%',)
     results = execute_sql_query(query, params=params)
-    
+
     # Handling no match found
     if not results:
         return json.dumps({"info": "No matching product found"})
-    
+
     product_id, product_name_corrected, stock = results[0]
-    
+
     # Check if the stock is sufficient
     if stock < quantity:
         return json.dumps({"info": "Insufficient stock"})
-    
+
     # Step 4: Place the order
     # Deducting the ordered quantity from the stock
     query = "UPDATE Products SET stock = stock - ? WHERE id = ?"
@@ -282,16 +280,16 @@ def order_product(account_id, product_name, quantity=1):
 
     # Adding the order details to the Orders table
     days_to_delivery = 5
-    for i in range(quantity):
+    query = "INSERT INTO Orders (order_id, product_id, days_to_delivery, account_id) VALUES (?, ?, ?, ?)"
+    for _ in range(quantity):
         max_order_id += 1
-        query = "INSERT INTO Orders (order_id, product_id, days_to_delivery, account_id) VALUES (?, ?, ?, ?)"
         params = (max_order_id, product_id, days_to_delivery, account_id)
         if place_orders: execute_sql_query(query, params=params)
-    
+
     # Step 5: Calculate the expected delivery date and return the JSON object
     today = datetime.now()
     expected_delivery_date = today + timedelta(days=days_to_delivery)
-    
+
     return json.dumps({
         "info": "Order placed",
         "product_name": product_name_corrected,
@@ -399,6 +397,4 @@ def chat_complete(messages, functions, function_call='auto'):
         "temperature" : 0,
     }
 
-    response = requests.post(url, headers=headers, data=json.dumps(data)).json()
-
-    return response
+    return requests.post(url, headers=headers, data=json.dumps(data)).json()

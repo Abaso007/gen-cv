@@ -47,10 +47,7 @@ height = 512
 width = 768
 
 os.mkdir('outputs/final_images')
-# os.mkdir(f'{args.output_dir}/final_images')
-
-prompt_count = 1
-for prompt in prompts:
+for prompt_count, prompt in enumerate(prompts, start=1):
     os.mkdir(f'outputs/final_images/prompt-{prompt_count:02}')
     # os.mkdir(f'{args.output_dir}/final_images/prompt-{prompts_count}')
 
@@ -64,11 +61,6 @@ for prompt in prompts:
         guidance_scale=guidance_scale
     ).images
 
-    count = 1
-    for image in images:
+    for count, image in enumerate(images, start=1):
         # save image to local directory
         image.save(f"./outputs/final_images/prompt-{prompt_count:02}/img-{count:02}.png")
-        # image.save(f"{args.output_dir}/final_images/prompt-{prompt_count}/img-{count}.png")
-        count += 1
-    
-    prompt_count +=1

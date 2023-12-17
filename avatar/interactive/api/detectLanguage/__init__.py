@@ -31,6 +31,8 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
 
     response = requests.post(apiUrl, **requestOptions)
     data = response.json()
+    if response.status_code != 200:
+        return func.HttpResponse(response.status_code)
     language_code = data['documents'][0]['detectedLanguage']['iso6391Name']
 
     language_to_voice = {
@@ -47,7 +49,4 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         "ar": "ar-AE"
     }
 
-    if response.status_code == 200:
-        return func.HttpResponse(language_to_voice[language_code], status_code=200)
-    else:
-        return func.HttpResponse(response.status_code)
+    return func.HttpResponse(language_to_voice[language_code], status_code=200)

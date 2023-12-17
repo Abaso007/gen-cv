@@ -24,7 +24,7 @@ def main(req: func.HttpRequest) -> func.HttpResponse:
         assert iceServer.credential is not None
         assert iceServer.urls is not None
         for url in iceServer.urls:
-            print('Url:' + url)
+            print(f'Url:{url}')
 
         credentials = {
             "username": iceServer.username,

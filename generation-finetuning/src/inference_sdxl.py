@@ -21,7 +21,7 @@ elif os.path.exists(f'{args.model_path}/pytorch_lora_weights.bin'):
     safetensor_weights = False
     weights_path_bin = f'{args.model_path}/pytorch_lora_weights.bin'
 
-    
+
 # Load the base pipeline and load the LoRA parameters into it. 
 pipe = DiffusionPipeline.from_pretrained('stabilityai/stable-diffusion-xl-base-1.0', torch_dtype=torch.float16)
 pipe = pipe.to("cuda")
@@ -65,21 +65,17 @@ if not os.path.exists('outputs/final_images/'):
 
 generator = torch.Generator("cuda").manual_seed(0)
 
-prompt_count = 1
-
-for prompt in prompts:
+# Run inference.
+full_count = 5
+for prompt_count, prompt in enumerate(prompts, start=1):
     os.mkdir(f'outputs/final_images/prompt-{prompt_count:02}')
-    
-    # Run inference.
-    full_count = 5
+
     for count in range(full_count):
-        
+
         image = pipe(prompt=prompt, negative_prompt=negative_prompt,output_type="latent", generator=generator).images[0]
         image = refiner(prompt=prompt, image=image[None, :], negative_prompt=negative_prompt, generator=generator).images[0]
         image.save(f"./outputs/final_images/prompt-{prompt_count:02}/img-{count:02}.png")
         count += 1
-    
-    prompt_count +=1
 
 
 

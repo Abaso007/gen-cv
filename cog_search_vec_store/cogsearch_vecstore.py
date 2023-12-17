@@ -144,7 +144,13 @@ class CogSearchVecStore:
         context, links, scores = self.process_search_results(results)
 
         if match:
-            return ['Analysis of the image in the question: ' + query + '\n\n'] + context, links, scores, analysis
+            return (
+                [f'Analysis of the image in the question: {query}' + '\n\n']
+                + context,
+                links,
+                scores,
+                analysis,
+            )
         else:
             return context, links, scores, analysis
 
@@ -154,35 +160,29 @@ class CogSearchVecStore:
 
         analysis = ''
         search_type = 'vector'
-        vector_name = 'cv_image_vector'
-
         if search_type not in self.search_types:
             raise Exception(f"search_type must be one of {self.search_types}")
 
         regex = r"(https?:\/\/[^\/\s]+(?:\/[^\/\s]+)*\/[^?\/\s]+(?:\.jpg|\.jpeg|\.png)(?:\?[^\s'\"]+)?)"
-        match = re.search(regex, query)
-
-        if match:
-            url = match.group(1)
-            query_dict = self.get_search_json(url, search_type)
-            query_dict = self.get_vector_fields(url, query_dict, vector_name)
-            if analyze: 
-                cvr = cv_helpers.CV()
-                analysis = cvr.analyze_image(img_url=url)
-            query_dict['vector']['k'] = NUM_TOP_MATCHES
-            query_dict['filter'] = filter
-            query_dict['select'] = ', '.join(self.all_fields) if select is None else select
-
-            results = self.http_req.post(op ='search', body = query_dict)
-            results = results['value'][:NUM_TOP_MATCHES]
-            if verbose: [print(r['@search.score']) for r in results]
-
-            context, links, scores = self.process_search_results(results)
-
-            return context, links, scores, analysis
-        
-        else:
+        if not (match := re.search(regex, query)):
             return ["Sorry, no similar images have been found"], [], [], analysis
+        url = match.group(1)
+        query_dict = self.get_search_json(url, search_type)
+        query_dict = self.get_vector_fields(url, query_dict, 'cv_image_vector')
+        if analyze: 
+            cvr = cv_helpers.CV()
+            analysis = cvr.analyze_image(img_url=url)
+        query_dict['vector']['k'] = NUM_TOP_MATCHES
+        query_dict['filter'] = filter
+        query_dict['select'] = ', '.join(self.all_fields) if select is None else select
+
+        results = self.http_req.post(op ='search', body = query_dict)
+        results = results['value'][:NUM_TOP_MATCHES]
+        if verbose: [print(r['@search.score']) for r in results]
+
+        context, links, scores = self.process_search_results(results)
+
+        return context, links, scores, analysis
 
 
 
@@ -212,10 +212,7 @@ class CogSearchVecStore:
                 context.append('######\n' + f"[{t['file']}] " + t['text_en'] + '\n######\n')
                 # context.append('######\n' + t['text_en'] + '\n######\n')
 
-        final_context = []
         total_tokens = 0
 
-        for i in range(len(context)):
-            final_context.append(context[i])
-
+        final_context = list(context)
         return final_context, links, scores

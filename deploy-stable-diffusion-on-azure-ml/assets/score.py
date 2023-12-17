@@ -55,9 +55,12 @@ def prepare_hed_scribble_image(image_base, hed, image_width):
     if not hed:
         hed = HEDdetector.from_pretrained('lllyasviel/ControlNet')
 
-    image = hed(image_base, scribble=True, detect_resolution=image_width, image_resolution=image_width)
-
-    return image
+    return hed(
+        image_base,
+        scribble=True,
+        detect_resolution=image_width,
+        image_resolution=image_width,
+    )
 
 
 def prepare_mlsd_image(image_base, mlsd, image_width):
@@ -67,9 +70,9 @@ def prepare_mlsd_image(image_base, mlsd, image_width):
     if not mlsd:
         mlsd = MLSDdetector.from_pretrained('lllyasviel/ControlNet')
 
-    image = mlsd(image_base, detect_resolution=image_width, image_resolution=image_width)
-
-    return image
+    return mlsd(
+        image_base, detect_resolution=image_width, image_resolution=image_width
+    )
 
 def prepare_depth_image(image_base, depth_estimator):
     """
@@ -130,9 +133,9 @@ def get_control_net_model(cont_model):
     """
     This function takes a control model as input, and returns a pre-trained ControlNetModel object.
     """
-    controlnet = ControlNetModel.from_pretrained(cont_model, torch_dtype=torch.float16).to("cuda")
-
-    return controlnet
+    return ControlNetModel.from_pretrained(
+        cont_model, torch_dtype=torch.float16
+    ).to("cuda")
 
 def get_img_img_pipeline(model_id):
     """
@@ -275,8 +278,7 @@ def get_image_object(image_url):
     This function takes an image URL and returns an Image object.
     """
     p = FastDownload().download(image_url, force=True)
-    init_image = Image.open(p).convert("RGB")
-    return init_image
+    return Image.open(p).convert("RGB")
 
 def prepare_response(images):
     """
@@ -300,14 +302,10 @@ def design(prompt, image=None, num_images_per_prompt=4, negative_prompt=None, st
     This function takes various parameters like prompt, image, seed, design_type, etc., and generates images based on the specified design type. It returns a list of generated images.
     """
     generator = None
-    if seed:
-        generator = torch.manual_seed(seed)
-    else:
-        generator = torch.manual_seed(0)
-
+    generator = torch.manual_seed(seed) if seed else torch.manual_seed(0)
     print('other_args', other_args)
     dic_conditioning_scales = {}
-    
+
     if other_args and 'CNET_CONFIGS' in other_args:
         cnet_configs = other_args['CNET_CONFIGS']
         dic_conditioning_scales = cnet_configs['controlnet_conditioning_scale']
@@ -337,7 +335,7 @@ def design(prompt, image=None, num_images_per_prompt=4, negative_prompt=None, st
 
     elif design_type == 'IMG_TO_IMG':
         li_images = base_models["pipe_img_img"](prompt_embeds=prompt_emd, image=image, num_images_per_prompt=num_images_per_prompt, negative_prompt_embeds=negative_prompt_emd, strength=strength, guidance_scale=guidance_scale, num_inference_steps=num_inference_steps).images
-        
+
     elif design_type == 'TXT_TO_IMG_SDXL':
         li_base_images = base_models["pipe_base_sdxl"](prompt_embeds=prompt_emd, pooled_prompt_embeds=pooled, num_images_per_prompt=num_images_per_prompt, negative_prompt_embeds=negative_prompt_emd, negative_pooled_prompt_embeds=pooled_neg, guidance_scale=guidance_scale, num_inference_steps=num_inference_steps).images
         for image in li_base_images:
@@ -346,11 +344,11 @@ def design(prompt, image=None, num_images_per_prompt=4, negative_prompt=None, st
 
     elif design_type == 'IMG_TO_IMG_SDXL':
         li_images = base_models["pipe_sdxl_refiner"](prompt=prompt, image=image, num_images_per_prompt=num_images_per_prompt, negative_prompt=negative_prompt, strength=strength, guidance_scale=guidance_scale, num_inference_steps=num_inference_steps).images
-    
+
     elif design_type == 'CNET_CANNY':
         canny_p = dic_conditioning_scales.get('CANNY', 1.0)
         canny_image = prepare_canny_image(image)
-        
+
         base_models["cnet_pipe"].controlnet = cnet_models['cnet_model_scribble']
         li_images = base_models["cnet_pipe"](prompt_embeds=prompt_emd, image=canny_image, controlnet_conditioning_scale=canny_p, num_images_per_prompt=num_images_per_prompt, negative_prompt_embeds=negative_prompt_emd, guidance_scale=guidance_scale, generator=generator, num_inference_steps=num_inference_steps).images
         li_images.append(canny_image)
@@ -361,7 +359,7 @@ def design(prompt, image=None, num_images_per_prompt=4, negative_prompt=None, st
 
         canny_p = dic_conditioning_scales.get('CANNY', 1.0)
         depth_p = dic_conditioning_scales.get('DEPTH', 0.3)
-        
+
         base_models["cnet_pipe"].controlnet = MultiControlNetModel([cnet_models['cnet_model_scribble'], cnet_models['cnet_model_depth']])
         li_images = base_models["cnet_pipe"](prompt_embeds=prompt_emd, image=[canny_image, depth_image], controlnet_conditioning_scale=[canny_p, depth_p], num_images_per_prompt=num_images_per_prompt, negative_prompt_embeds=negative_prompt_emd, guidance_scale=guidance_scale, generator=generator, num_inference_steps=num_inference_steps).images
         li_images.append(canny_image)
@@ -394,7 +392,6 @@ def run(raw_data):
     image_url = None
     mask_url = None
     mask = None
-    other_args = None
     image = None
     strength = data['strength']
 
@@ -402,10 +399,7 @@ def run(raw_data):
         mask_url = data['mask_image']
         mask = get_image_object(mask_url)
 
-    if 'other_args' in data:
-        other_args = data['other_args']
-
-
+    other_args = data['other_args'] if 'other_args' in data else None
     if 'image_url' in data:
         image_url = data['image_url']
         image = get_image_object(image_url)
@@ -419,9 +413,7 @@ def run(raw_data):
                         negative_prompt=negative_prompt, strength=strength, 
                         guidance_scale=guidance_scale, num_inference_steps=num_inference_steps,
                         seed=seed, design_type=design_type, mask=mask, other_args=other_args)
-    
-    preped_response = prepare_response(images)
-    resp = AMLResponse(message=preped_response, status_code=200, json_str=True)
 
-    return resp
+    preped_response = prepare_response(images)
+    return AMLResponse(message=preped_response, status_code=200, json_str=True)
 
