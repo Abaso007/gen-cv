@@ -50,9 +50,7 @@ def image_embedding(image_file):
     with open(image_file, 'rb') as f:
         data = f.read()
     r = requests.post(vec_img_url, data=data, headers=headers_image)
-    image_emb = r.json()['vector']
-
-    return image_emb
+    return r.json()['vector']
 
 
 def image_embedding_batch(image_file):
@@ -91,9 +89,7 @@ def text_embedding(promptxt):
     r = requests.post(vec_txt_url,
                       data=json.dumps(prompt),
                       headers=headers_prompt)
-    text_emb = r.json()['vector']
-
-    return text_emb
+    return r.json()['vector']
 
 
 def get_cosine_similarity(vector1, vector2):
@@ -101,16 +97,13 @@ def get_cosine_similarity(vector1, vector2):
     Get cosine similarity value between two embedded vectors
     Using sklearn
     """
-    dot_product = 0
     length = min(len(vector1), len(vector2))
 
-    for i in range(length):
-        dot_product += vector1[i] * vector2[i]
-
-    cosine_similarity = dot_product / (math.sqrt(sum(x * x for x in vector1))\
-                                       * math.sqrt(sum(x * x for x in vector2)))
-
-    return cosine_similarity
+    dot_product = sum(vector1[i] * vector2[i] for i in range(length))
+    return dot_product / (
+        math.sqrt(sum(x * x for x in vector1))
+        * math.sqrt(sum(x * x for x in vector2))
+    )
 
 
 def view_image(image_file):
@@ -128,14 +121,11 @@ def get_similar_images_using_image(list_emb, image_files, image_file):
     Get similar images using an image with Azure Computer Vision 4 Florence
     """
     ref_emb = image_embedding(image_file)
-    idx = 0
     results_list = []
 
-    for emb_image in list_emb:
+    for idx, emb_image in enumerate(list_emb):
         simil = get_cosine_similarity(ref_emb, list_emb[idx])
         results_list.append(simil)
-        idx += 1
-
     df_files = pd.DataFrame(image_files, columns=['image_file'])
     df_simil = pd.DataFrame(results_list, columns=['similarity'])
     df = pd.concat([df_files, df_simil], axis=1)
@@ -153,14 +143,11 @@ def get_similar_images_using_prompt(prompt, image_files, list_emb):
     Get similar umages using a prompt with Azure Computer Vision 4 Florence
     """
     prompt_emb = text_embedding(prompt)
-    idx = 0
     results_list = []
 
-    for emb_image in list_emb:
+    for idx, emb_image in enumerate(list_emb):
         simil = get_cosine_similarity(prompt_emb, list_emb[idx])
         results_list.append(simil)
-        idx += 1
-
     df_files = pd.DataFrame(image_files, columns=['image_file'])
     df_simil = pd.DataFrame(results_list, columns=['similarity'])
     df = pd.concat([df_files, df_simil], axis=1)
@@ -223,13 +210,10 @@ def view_similar_images_using_image(reference_image, topn_list,
             else:
                 imgtitle = f"Top {i}: {os.path.basename(img_list[i])}\nSimilarity = {round(simil_topn_list[i-1], 5)}"
                 ax.set_title(imgtitle, size=size, color='green')
-            ax.axis('off')
-
-        else:
-            ax.axis('off')
+        ax.axis('off')
 
     plt.show()
-    
+
     print("\033[1;31;32m",
           datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
           "Powered by Azure Computer Vision Florence")
@@ -242,7 +226,7 @@ def view_similar_images_using_prompt(query, topn_list, simil_topn_list,
     """
     print("\033[1;31;34m")
     print("Similar images using query =", query)
-    
+
     num_images = len(topn_list)
     FIGSIZE = (12, 8)
     fig, axes = plt.subplots(nrows=num_rows, ncols=num_cols, figsize=FIGSIZE)
@@ -255,13 +239,10 @@ def view_similar_images_using_prompt(query, topn_list, simil_topn_list,
             ax.imshow(img)
             imgtitle = f"Top {i+1}: {os.path.basename(topn_list[i])}\nSimilarity = {round(simil_topn_list[i], 5)}"
             ax.set_title(imgtitle, size=size, color='green')
-            ax.axis('off')
-
-        else:
-            ax.axis('off')
+        ax.axis('off')
 
     plt.show()
-    
+
     print("\033[1;31;32m",
           datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
           "Powered by Azure Computer Vision Florence")
@@ -279,10 +260,9 @@ def get_img_embedding_multiprocessing(image_file):
         'Ocp-Apim-Subscription-Key': key
     }
 
-    emb = requests.post(vec_img_url,
-                        data=open(image_file, 'rb').read(),
-                        headers=headers_images).json()['vector']
-    return emb
+    return requests.post(
+        vec_img_url, data=open(image_file, 'rb').read(), headers=headers_images
+    ).json()['vector']
 
 
 def remove_background(image_file):

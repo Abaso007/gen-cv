@@ -196,12 +196,10 @@ class CVHttpRequest(HTTPRequest):
 
 
     def get_url(self, op = None):
-        if op == 'analyze':
-            url = self.url
-        elif op == 'img_embedding':
+        if op == 'img_embedding':
             url = self.imgvec_url
         elif op == 'text_embedding':
-            url = self.txtvec_url            
+            url = self.txtvec_url
         else:
             url = self.url
 

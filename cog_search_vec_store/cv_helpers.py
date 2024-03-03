@@ -23,12 +23,15 @@ class CV:
 
 
     def process_json(self, img_url, response):
-        res = {}
-
-        res['main_caption'] = response['captionResult']['text']
-        res['tags'] = [tag['name'] for tag in response['tagsResult']['values']]
-        res['ocr'] = response['readResult']['content']
-        res['captions'] = [caption['text'] for caption in response['denseCaptionsResult']['values']]
+        res = {
+            'main_caption': response['captionResult']['text'],
+            'tags': [tag['name'] for tag in response['tagsResult']['values']],
+            'ocr': response['readResult']['content'],
+            'captions': [
+                caption['text']
+                for caption in response['denseCaptionsResult']['values']
+            ],
+        }
 
         res['text'] = f"[{img_url}] This is an image. Main Caption: {res['main_caption']}\nOCR: {res['ocr']}\nDense Captions: {', '.join(res['captions'])}\nTags: {', '.join(res['tags'])}"
 

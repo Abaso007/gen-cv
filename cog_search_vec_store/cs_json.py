@@ -284,15 +284,11 @@ search_dict_vector = {
 
 
 search_dict_hybrid = {
-    "vector": {
-        "value": [],
-        "fields": "aoi_text_vector",
-        "k": 5
-    },
+    "vector": {"value": [], "fields": "aoi_text_vector", "k": 5},
     "search": "",
     "select": "*",
-    "top": f"{5}",
-    "filter": None
+    "top": 5,
+    "filter": None,
 }
 
 
